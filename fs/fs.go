@@ -54,7 +54,7 @@ func Register(data string) {
 
 // New creates a new file system with the registered zip contents data.
 // It unzips all files and stores them in an in-memory map.
-func New() (http.FileSystem, error) {
+func New() (*StatikFS, error) {
 	if zipData == "" {
 		return nil, errors.New("statik/fs: no zip data registered")
 	}
@@ -129,6 +129,28 @@ func (fs *StatikFS) Open(name string) (http.File, error) {
 		return newHTTPFile(f), nil
 	}
 	return nil, os.ErrNotExist
+}
+
+// Readdir method.
+func (fs *StatikFS) Readdir(folderPath string) ([]string, error) {
+	folderPath = filepath.Clean(path.Join("/", folderPath))
+
+	if list, ok := fs.Dirs[folderPath]; ok {
+		return list, nil
+	}
+
+	return make([]string, 0), os.ErrNotExist
+}
+
+// Readfile method.
+func (fs *StatikFS) Readfile(filePath string) ([]byte, error) {
+	filePath = filepath.Clean(path.Join("/", filePath))
+
+	if file, ok := fs.Files[filePath]; ok {
+		return file.data, nil
+	}
+
+	return make([]byte, 0), os.ErrNotExist
 }
 
 func newHTTPFile(file file) *httpFile {
