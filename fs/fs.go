@@ -37,12 +37,13 @@ var zipData string
 type file struct {
 	os.FileInfo
 	data []byte
-	fs   *statikFS
+	fs   *StatikFS
 }
 
-type statikFS struct {
-	files map[string]file
-	dirs  map[string][]string
+// StatikFS definition.
+type StatikFS struct {
+	Files map[string]file
+	Dirs  map[string][]string
 }
 
 // Register registers zip contents data, later used to initialize
@@ -63,7 +64,7 @@ func New() (http.FileSystem, error) {
 	}
 	files := make(map[string]file, len(zipReader.File))
 	dirs := make(map[string][]string)
-	fs := &statikFS{files: files, dirs: dirs}
+	fs := &StatikFS{Files: files, Dirs: dirs}
 	for _, zipFile := range zipReader.File {
 		fi := zipFile.FileInfo()
 		f := file{FileInfo: fi, fs: fs}
@@ -87,10 +88,10 @@ func New() (http.FileSystem, error) {
 	for fn := range files {
 		dn := path.Dir(fn)
 		if fn != dn {
-			fs.dirs[dn] = append(fs.dirs[dn], path.Base(fn))
+			fs.Dirs[dn] = append(fs.Dirs[dn], path.Base(fn))
 		}
 	}
-	for _, s := range fs.dirs {
+	for _, s := range fs.Dirs {
 		sort.Strings(s)
 	}
 	return fs, nil
@@ -122,9 +123,9 @@ func unzip(zf *zip.File) ([]byte, error) {
 // no file matching the given file name is found in the archive.
 // If a directory is requested, Open returns the file named "index.html"
 // in the requested directory, if that file exists.
-func (fs *statikFS) Open(name string) (http.File, error) {
+func (fs *StatikFS) Open(name string) (http.File, error) {
 	name = filepath.Clean(name)
-	if f, ok := fs.files[name]; ok {
+	if f, ok := fs.Files[name]; ok {
 		return newHTTPFile(f), nil
 	}
 	return nil, os.ErrNotExist
@@ -185,7 +186,7 @@ func (f *httpFile) Readdir(count int) ([]os.FileInfo, error) {
 	// If count is positive, the specified number of files will be returned,
 	// and if non-positive, all remaining files will be returned.
 	// The reading position of which file is returned is held in dirIndex.
-	fnames := f.file.fs.dirs[di.name]
+	fnames := f.file.fs.Dirs[di.name]
 	flen := len(fnames)
 
 	// If dirIdx reaches the end and the count is a positive value,
@@ -206,7 +207,7 @@ func (f *httpFile) Readdir(count int) ([]os.FileInfo, error) {
 		end = flen
 	}
 	for i := start; i < end; i++ {
-		fis = append(fis, f.file.fs.files[path.Join(di.name, fnames[i])].FileInfo)
+		fis = append(fis, f.file.fs.Files[path.Join(di.name, fnames[i])].FileInfo)
 	}
 	f.dirIdx += len(fis)
 	return fis, nil
