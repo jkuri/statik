@@ -4,7 +4,7 @@
 package statik
 
 import (
-	"github.com/rakyll/statik/fs"
+	"github.com/jkuri/statik/fs"
 )
 
 func init() {
